@@ -7,8 +7,10 @@ properties([
         choice(
             choices: ['plan', 'apply', 'destroy'], 
             name: 'Terraform_Action'
-        )])
+        )
+    ])
 ])
+
 pipeline {
     agent any
     stages {
@@ -17,44 +19,48 @@ pipeline {
                 sh 'echo Preparing'
             }
         }
+
         stage('Git Pulling') {
             steps {
                 git branch: 'master', url: 'https://github.com/Arun34926/EKS-Terraform-GitHub-Actions.git'
             }
         }
+
         stage('Cleanup old backend') {
-          steps {
+            steps {
                 sh '''
-                      echo "Removing old .terraform and state files to re-initialize backend"
-                      cd $WORKSPACE/eks
-                      rm -rf .terraform terraform.tfstate terraform.tfstate.backup
-                    '''
-              }
+                    echo "Removing old .terraform and state files to re-initialize backend"
+                    cd $WORKSPACE/eks
+                    rm -rf .terraform terraform.tfstate terraform.tfstate.backup
+                '''
+            }
         }
 
         stage('Init') {
             steps {
                 withAWS(credentials: 'aws-cred', region: 'us-east-1') {
-                sh 'terraform -chdir=eks/ init'
+                    sh 'terraform -chdir=eks/ init -input=false'
                 }
             }
         }
+
         stage('Validate') {
             steps {
                 withAWS(credentials: 'aws-cred', region: 'us-east-1') {
-                sh 'terraform -chdir=eks/ validate'
+                    sh 'terraform -chdir=eks/ validate'
                 }
             }
         }
+
         stage('Action') {
             steps {
                 withAWS(credentials: 'aws-cred', region: 'us-east-1') {
-                    script {    
+                    script {
                         if (params.Terraform_Action == 'plan') {
                             sh "terraform -chdir=eks/ plan -var-file=${params.Environment}.tfvars"
-                        }   else if (params.Terraform_Action == 'apply') {
+                        } else if (params.Terraform_Action == 'apply') {
                             sh "terraform -chdir=eks/ apply -var-file=${params.Environment}.tfvars -auto-approve"
-                        }   else if (params.Terraform_Action == 'destroy') {
+                        } else if (params.Terraform_Action == 'destroy') {
                             sh "terraform -chdir=eks/ destroy -var-file=${params.Environment}.tfvars -auto-approve"
                         } else {
                             error "Invalid value for Terraform_Action: ${params.Terraform_Action}"
