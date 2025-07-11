@@ -22,6 +22,16 @@ pipeline {
                 git branch: 'master', url: 'https://github.com/Arun34926/EKS-Terraform-GitHub-Actions.git'
             }
         }
+        stage('Cleanup old backend') {
+          steps {
+                sh '''
+                      echo "Removing old .terraform and state files to re-initialize backend"
+                      cd $WORKSPACE/eks
+                      rm -rf .terraform terraform.tfstate terraform.tfstate.backup
+                    '''
+              }
+        }
+
         stage('Init') {
             steps {
                 withAWS(credentials: 'aws-creds', region: 'us-east-1') {
